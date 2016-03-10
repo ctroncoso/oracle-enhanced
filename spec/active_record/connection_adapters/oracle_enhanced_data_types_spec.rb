@@ -67,21 +67,21 @@ describe "OracleEnhancedAdapter date type detection based on column names" do
     ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_dates_by_column_name = false
     columns = @conn.columns('test_employees')
     column = columns.detect{|c| c.name == "hire_date"}
-    column.type_cast(Time.now).class.should == Time
+    column.type_cast_from_database(Time.now).class.should == Time
   end
 
   it "should return Date value from DATE column if column name contains 'date' and emulate_dates_by_column_name is true" do
     ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_dates_by_column_name = true
     columns = @conn.columns('test_employees')
     column = columns.detect{|c| c.name == "hire_date"}
-    column.type_cast(Time.now).class.should == Date
+    column.type_cast_from_database(Time.now).class.should == Date
   end
 
   it "should typecast DateTime value to Date value from DATE column if column name contains 'date' and emulate_dates_by_column_name is true" do
     ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_dates_by_column_name = true
     columns = @conn.columns('test_employees')
     column = columns.detect{|c| c.name == "hire_date"}
-    column.type_cast(DateTime.new(1900,1,1)).class.should == Date
+    column.type_cast_from_database(DateTime.new(1900,1,1)).class.should == Date
   end
 
   describe "/ DATE values from ActiveRecord model" do
@@ -206,7 +206,6 @@ describe "OracleEnhancedAdapter integer type detection based on column names" do
         job_id        NUMBER,
         salary        NUMBER,
         commission_pct  NUMBER(2,2),
-        unwise_name_id NUMBER(2,2),
         manager_id    NUMBER(6),
         is_manager    NUMBER(1),
         department_id NUMBER(4,0),
@@ -219,46 +218,17 @@ describe "OracleEnhancedAdapter integer type detection based on column names" do
         INCREMENT BY 1 START WITH 10040 CACHE 20 NOORDER NOCYCLE
     SQL
   end
-
+  
   after(:all) do
     @conn.execute "DROP TABLE test2_employees"
     @conn.execute "DROP SEQUENCE test2_employees_seq"
   end
 
-  context "when number_datatype_coercion is :decimal" do
-    before { ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.stub(:number_datatype_coercion).and_return(:decimal) }
-
-    it "should set NUMBER column type as decimal if emulate_integers_by_column_name is false" do
-      ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_integers_by_column_name = false
-      columns = @conn.columns('test2_employees')
-      column = columns.detect{|c| c.name == "job_id"}
-      column.type.should == :decimal
-    end
-
-    it "should set NUMBER column type as decimal if column name is not 'id' and does not ends with '_id' and emulate_integers_by_column_name is true" do
-      ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_integers_by_column_name = true
-      columns = @conn.columns('test2_employees')
-      column = columns.detect{|c| c.name == "salary"}
-      column.type.should == :decimal
-    end
-  end
-
-  context "when number_datatype_coercion is :float" do
-    before { ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.stub(:number_datatype_coercion).and_return(:float) }
-
-    it "should set NUMBER column type as float if emulate_integers_by_column_name is false" do
-      ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_integers_by_column_name = false
-      columns = @conn.columns('test2_employees')
-      column = columns.detect{|c| c.name == "job_id"}
-      column.type.should == :float
-    end
-
-    it "should set NUMBER column type as float if column name is not 'id' and does not ends with '_id' and emulate_integers_by_column_name is true" do
-      ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_integers_by_column_name = true
-      columns = @conn.columns('test2_employees')
-      column = columns.detect{|c| c.name == "salary"}
-      column.type.should == :float
-    end
+  it "should set NUMBER column type as decimal if emulate_integers_by_column_name is false" do
+    ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_integers_by_column_name = false
+    columns = @conn.columns('test2_employees')
+    column = columns.detect{|c| c.name == "job_id"}
+    column.type.should == :decimal
   end
 
   it "should set NUMBER column type as integer if emulate_integers_by_column_name is true" do
@@ -270,24 +240,10 @@ describe "OracleEnhancedAdapter integer type detection based on column names" do
     column.type.should == :integer
   end
 
-  it "should set NUMBER(p,0) column type as integer" do
+  it "should set NUMBER column type as decimal if column name does not contain 'id' and emulate_integers_by_column_name is true" do
     ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_integers_by_column_name = true
     columns = @conn.columns('test2_employees')
-    column = columns.detect{|c| c.name == "department_id"}
-    column.type.should == :integer
-  end
-
-  it "should set NUMBER(p,s) column type as integer if column name ends with '_id' and emulate_integers_by_column_name is true" do
-    ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_integers_by_column_name = true
-    columns = @conn.columns('test2_employees')
-    column = columns.detect{|c| c.name == "unwise_name_id"}
-    column.type.should == :integer
-  end
-
-  it "should set NUMBER(p,s) column type as decimal if column name ends with '_id' and emulate_integers_by_column_name is false" do
-    ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_integers_by_column_name = false
-    columns = @conn.columns('test2_employees')
-    column = columns.detect{|c| c.name == "unwise_name_id"}
+    column = columns.detect{|c| c.name == "salary"}
     column.type.should == :decimal
   end
 
@@ -295,14 +251,14 @@ describe "OracleEnhancedAdapter integer type detection based on column names" do
     ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_integers_by_column_name = false
     columns = @conn.columns('test2_employees')
     column = columns.detect{|c| c.name == "job_id"}
-    column.type_cast(1.0).class.should == BigDecimal
+    column.type_cast_from_database(1.0).class.should == BigDecimal
   end
 
-  it "should return Fixnum value from NUMBER column if column name ends with '_id' and emulate_integers_by_column_name is true" do
+  it "should return Fixnum value from NUMBER column if column name contains 'id' and emulate_integers_by_column_name is true" do
     ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_integers_by_column_name = true
     columns = @conn.columns('test2_employees')
     column = columns.detect{|c| c.name == "job_id"}
-    column.type_cast(1.0).class.should == Fixnum
+    column.type_cast_from_database(1.0).class.should == Fixnum
   end
 
   describe "/ NUMBER values from ActiveRecord model" do
@@ -310,7 +266,7 @@ describe "OracleEnhancedAdapter integer type detection based on column names" do
       class ::Test2Employee < ActiveRecord::Base
       end
     end
-
+    
     after(:each) do
       Object.send(:remove_const, "Test2Employee")
       @conn.clear_types_for_columns
@@ -420,6 +376,43 @@ describe "OracleEnhancedAdapter boolean type detection based on string column ty
     ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_booleans_from_strings = false
   end
 
+  before(:each) do
+    class ::Test3Employee < ActiveRecord::Base
+    end
+  end
+
+  after(:each) do
+    Object.send(:remove_const, "Test3Employee")
+    @conn.clear_types_for_columns
+    ActiveRecord::Base.clear_cache! if ActiveRecord::Base.respond_to?(:"clear_cache!")
+  end
+
+  describe "default values in new records" do
+    context "when emulate_booleans_from_strings is false" do
+      before do
+        ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_booleans_from_strings = false
+      end
+
+      it "are Y or N" do
+        subject = Test3Employee.new
+        expect(subject.has_phone).to eq('Y')
+        expect(subject.manager_yn).to eq('N')
+      end
+    end
+
+    context "when emulate_booleans_from_strings is true" do
+      before do
+        ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_booleans_from_strings = true
+      end
+
+      it "are True or False" do
+        subject = Test3Employee.new
+        expect(subject.has_phone).to be_a(TrueClass)
+        expect(subject.manager_yn).to be_a(FalseClass)
+      end
+    end
+  end
+
   it "should set CHAR/VARCHAR2 column type as string if emulate_booleans_from_strings is false" do
     ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_booleans_from_strings = false
     columns = @conn.columns('test3_employees')
@@ -452,7 +445,7 @@ describe "OracleEnhancedAdapter boolean type detection based on string column ty
     columns = @conn.columns('test3_employees')
     %w(has_email has_phone active_flag manager_yn).each do |col|
       column = columns.detect{|c| c.name == col}
-      column.type_cast("Y").class.should == String
+      column.type_cast_from_database("Y").class.should == String
     end
   end
 
@@ -461,8 +454,8 @@ describe "OracleEnhancedAdapter boolean type detection based on string column ty
     columns = @conn.columns('test3_employees')
     %w(has_email has_phone active_flag manager_yn).each do |col|
       column = columns.detect{|c| c.name == col}
-      column.type_cast("Y").class.should == TrueClass
-      column.type_cast("N").class.should == FalseClass
+      column.type_cast_from_database("Y").class.should == TrueClass
+      column.type_cast_from_database("N").class.should == FalseClass
     end
   end
 
@@ -481,19 +474,16 @@ describe "OracleEnhancedAdapter boolean type detection based on string column ty
   it "should get default value from VARCHAR2 boolean column if emulate_booleans_from_strings is true" do
     ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_booleans_from_strings = true
     columns = @conn.columns('test3_employees')
-    columns.detect{|c| c.name == 'has_phone'}.default.should be_true
-    columns.detect{|c| c.name == 'manager_yn'}.default.should be_false
+    columns.detect{|c| c.name == 'has_phone'}.default.should eq 'Y'
+    columns.detect{|c| c.name == 'manager_yn'}.default.should be false
   end
 
   describe "/ VARCHAR2 boolean values from ActiveRecord model" do
     before(:each) do
       ActiveRecord::ConnectionAdapters::OracleEnhancedAdapter.emulate_booleans_from_strings = false
-      class ::Test3Employee < ActiveRecord::Base
-      end
     end
 
     after(:each) do
-      Object.send(:remove_const, "Test3Employee")
       @conn.clear_types_for_columns
       ActiveRecord::Base.clear_cache! if ActiveRecord::Base.respond_to?(:"clear_cache!")
     end
@@ -649,6 +639,7 @@ describe "OracleEnhancedAdapter timestamp with timezone support" do
   end
 
 end
+
 
 describe "OracleEnhancedAdapter date and timestamp with different NLS date formats" do
   before(:all) do
@@ -906,7 +897,7 @@ describe "OracleEnhancedAdapter assign string to :date and :datetime columns" do
     @employee.reload
     @employee.last_login_at.should == @today.to_time
   end
-
+  
 end
 
 describe "OracleEnhancedAdapter handling of CLOB columns" do
@@ -1119,6 +1110,20 @@ describe "OracleEnhancedAdapter handling of CLOB columns" do
     @employee.comments.should == @char_data
   end
 
+  it "should store serializable ruby data structures" do
+    ruby_data1 = {"arbitrary1" => ["ruby", :data, 123]}
+    ruby_data2 = {"arbitrary2" => ["ruby", :data, 123]}
+    @employee = Test2Employee.create!(
+      :comments => ruby_data1
+    )
+    @employee.reload
+    @employee.comments.should == ruby_data1
+    @employee.comments = ruby_data2
+    @employee.save
+    @employee.reload
+    @employee.comments.should == ruby_data2
+  end
+
   it "should keep unchanged serialized data when other columns changed" do
     @employee = Test2Employee.create!(
       :first_name => "First",
@@ -1129,6 +1134,18 @@ describe "OracleEnhancedAdapter handling of CLOB columns" do
     @employee.save
     @employee.reload
     @employee.comments.should == "initial serialized data"
+  end
+
+  it "should keep serialized data after save" do
+    @employee = Test2Employee.new
+    @employee.comments = {:length=>{:is=>1}}
+    @employee.save
+    @employee.reload
+    @employee.comments.should == {:length=>{:is=>1}}
+    @employee.comments = {:length=>{:is=>2}}
+    @employee.save
+    @employee.reload
+    @employee.comments.should == {:length=>{:is=>2}}
   end
 end
 
@@ -1383,6 +1400,7 @@ describe "OracleEnhancedAdapter handling of RAW columns" do
   end
 end
 
+
 describe "OracleEnhancedAdapter quoting of NCHAR and NVARCHAR2 columns" do
   before(:all) do
     ActiveRecord::Base.establish_connection(CONNECTION_PARAMS)
@@ -1442,4 +1460,46 @@ describe "OracleEnhancedAdapter quoting of NCHAR and NVARCHAR2 columns" do
     item.nvarchar2_column.should == nchar_data
   end
 
+end
+
+describe "OracleEnhancedAdapter handling of BINARY_FLOAT columns" do
+  before(:all) do
+    ActiveRecord::Base.establish_connection(CONNECTION_PARAMS)
+    @conn = ActiveRecord::Base.connection
+    @conn.execute "DROP TABLE test2_employees" rescue nil
+    @conn.execute <<-SQL
+      CREATE TABLE test2_employees (
+        id            NUMBER PRIMARY KEY,
+        first_name    VARCHAR2(20),
+        last_name     VARCHAR2(25),
+        email         VARCHAR2(25),
+        phone_number  VARCHAR2(20),
+        hire_date     DATE,
+        job_id        NUMBER,
+        salary        NUMBER,
+        commission_pct  NUMBER(2,2),
+        hourly_rate   BINARY_FLOAT,
+        manager_id    NUMBER(6),
+        is_manager    NUMBER(1),
+        department_id NUMBER(4,0),
+        created_at    DATE
+      )
+    SQL
+    @conn.execute "DROP SEQUENCE test2_employees_seq" rescue nil
+    @conn.execute <<-SQL
+      CREATE SEQUENCE test2_employees_seq  MINVALUE 1
+        INCREMENT BY 1 START WITH 10040 CACHE 20 NOORDER NOCYCLE
+    SQL
+  end
+  
+  after(:all) do
+    @conn.execute "DROP TABLE test2_employees"
+    @conn.execute "DROP SEQUENCE test2_employees_seq"
+  end
+
+  it "should set BINARY_FLOAT column type as float" do
+    columns = @conn.columns('test2_employees')
+    column = columns.detect{|c| c.name == "hourly_rate"}
+    column.type.should == :float
+  end
 end
